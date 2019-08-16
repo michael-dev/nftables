@@ -1796,9 +1796,20 @@ static void binop_adjust_one(const struct expr *binop, struct expr *value,
 {
 	struct expr *left = binop->left;
 
-	assert(value->len >= binop->right->len);
-
 	mpz_rshift_ui(value->value, shift);
+
+	/* This will happen when a set has a key that is
+	 * smaller than the amount of bytes loaded by the
+	 * payload/exthdr expression.
+	 *
+	 * This can't happen with normal nft frontend,
+	 * but it can happen with custom clients or with
+	 * nft sets defined via 'type integer,8' and then
+	 * asking "vlan id @myset".
+	 */
+	if (value->len < binop->right->len)
+		return;
+
 	switch (left->etype) {
 	case EXPR_PAYLOAD:
 	case EXPR_EXTHDR:
