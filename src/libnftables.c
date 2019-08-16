@@ -134,8 +134,7 @@ static void nft_ctx_netlink_init(struct nft_ctx *ctx)
 	ctx->nf_sock = nft_mnl_socket_open();
 }
 
-EXPORT_SYMBOL(nft_ctx_new);
-struct nft_ctx *nft_ctx_new(uint32_t flags)
+struct nft_ctx *__nft_ctx_new(void)
 {
 	static bool init_once;
 	struct nft_ctx *ctx;
@@ -149,18 +148,26 @@ struct nft_ctx *nft_ctx_new(uint32_t flags)
 	}
 
 	ctx = xzalloc(sizeof(struct nft_ctx));
-	nft_init(ctx);
 
 	ctx->state = xzalloc(sizeof(struct parser_state));
 	nft_ctx_add_include_path(ctx, DEFAULT_INCLUDE_PATH);
-	ctx->parser_max_errors	= 10;
 	init_list_head(&ctx->cache.list);
-	ctx->flags = flags;
 	ctx->output.output_fp = stdout;
 	ctx->output.error_fp = stderr;
 
-	if (flags == NFT_CTX_DEFAULT)
-		nft_ctx_netlink_init(ctx);
+	return ctx;
+}
+
+EXPORT_SYMBOL(nft_ctx_new);
+struct nft_ctx *nft_ctx_new(uint32_t flags)
+{
+	struct nft_ctx *ctx = __nft_ctx_new();
+
+	nft_init(ctx);
+
+	ctx->parser_max_errors	= 10;
+	ctx->flags = flags;
+	nft_ctx_netlink_init(ctx);
 
 	return ctx;
 }
@@ -281,20 +288,25 @@ const char *nft_ctx_get_error_buffer(struct nft_ctx *ctx)
 	return get_cookie_buffer(&ctx->output.error_cookie);
 }
 
-EXPORT_SYMBOL(nft_ctx_free);
-void nft_ctx_free(struct nft_ctx *ctx)
+void __nft_ctx_free(struct nft_ctx *ctx)
 {
 	if (ctx->nf_sock)
 		mnl_socket_close(ctx->nf_sock);
 
 	exit_cookie(&ctx->output.output_cookie);
 	exit_cookie(&ctx->output.error_cookie);
-	iface_cache_release();
 	cache_release(&ctx->cache);
 	nft_ctx_clear_include_paths(ctx);
 	xfree(ctx->state);
 	xfree(ctx);
+}
+
+EXPORT_SYMBOL(nft_ctx_free);
+void nft_ctx_free(struct nft_ctx *ctx)
+{
 	nft_exit(ctx);
+	__nft_ctx_free(ctx);
+	iface_cache_release();
 }
 
 EXPORT_SYMBOL(nft_ctx_set_output);
