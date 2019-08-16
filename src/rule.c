@@ -436,6 +436,16 @@ const char *set_policy2str(uint32_t policy)
 	}
 }
 
+static void set_print_key(const struct expr *expr, struct output_ctx *octx)
+{
+	const struct datatype *dtype = expr->dtype;
+
+	if (dtype->size)
+		nft_print(octx, " %s", dtype->name);
+	else
+		nft_print(octx, " %s,%d", dtype->name, expr->len);
+}
+
 static void set_print_declaration(const struct set *set,
 				  struct print_fmt_options *opts,
 				  struct output_ctx *octx)
@@ -465,12 +475,16 @@ static void set_print_declaration(const struct set *set,
 	if (nft_output_handle(octx))
 		nft_print(octx, " # handle %" PRIu64, set->handle.handle.id);
 	nft_print(octx, "%s", opts->nl);
-	nft_print(octx, "%s%stype %s",
-		  opts->tab, opts->tab, set->key->dtype->name);
-	if (set_is_datamap(set->flags))
-		nft_print(octx, " : %s", set->data->dtype->name);
-	else if (set_is_objmap(set->flags))
+	nft_print(octx, "%s%stype ",
+		  opts->tab, opts->tab);
+	set_print_key(set->key, octx);
+
+	if (set_is_datamap(set->flags)) {
+		nft_print(octx, " : ");
+		set_print_key(set->data, octx);
+	} else if (set_is_objmap(set->flags)) {
 		nft_print(octx, " : %s", obj_type_name(set->objtype));
+	}
 
 	nft_print(octx, "%s", opts->stmt_separator);
 

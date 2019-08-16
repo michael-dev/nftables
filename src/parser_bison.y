@@ -1826,6 +1826,24 @@ data_type_atom_expr	:	type_identifier
 							 dtype->size, NULL);
 				xfree($1);
 			}
+			|	type_identifier	COMMA	NUM
+			{
+				const struct datatype *dtype = datatype_lookup_byname($1);
+				if (dtype == NULL) {
+					erec_queue(error(&@1, "unknown datatype %s", $1),
+						   state->msgs);
+					YYERROR;
+				}
+
+				if (dtype->size) {
+					erec_queue(error(&@1, "Datatype %s has a fixed type", $1),
+						   state->msgs);
+					YYERROR;
+				}
+				$$ = constant_expr_alloc(&@1, dtype, dtype->byteorder,
+							 $3, NULL);
+				xfree($1);
+			}
 			;
 
 data_type_expr		:	data_type_atom_expr
