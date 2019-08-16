@@ -1,0 +1,16 @@
+table inet t {
+	map m1 {
+		type typeof(osf name) : mark
+		elements = { "Linux" : 0x00000001 }
+	}
+
+	map m2 {
+		type string,128 : mark
+		elements = { "Linux" : 0x00000001 }
+	}
+
+	chain c {
+		ct mark set osf name map @m1
+		ct mark set osf name map @m2
+	}
+}

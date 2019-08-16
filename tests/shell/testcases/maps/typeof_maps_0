@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# support for strings/typeof in named maps.
+# m1 and m2 are identical, they just use different
+# ways for declaration.
+
+EXPECTED="table inet t {
+	map m1 {
+		type typeof(osf name) : typeof(ct mark)
+		elements = { \"Linux\" : 0x1 }
+	}
+
+	map m2 {
+		type string, 128 : mark
+		elements = { \"Linux\" : 0x1 }
+	}
+
+	chain c {
+		ct mark set osf name map @m1
+		ct mark set osf name map @m2
+	}
+}"
+
+set -e
+$NFT -f - <<< $EXPECTED
+

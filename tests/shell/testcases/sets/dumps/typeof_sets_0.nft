@@ -1,0 +1,31 @@
+table inet t {
+	set s1 {
+		type typeof(osf name)
+		elements = { "Linux" }
+	}
+
+	set s2 {
+		type string,128
+		elements = { "Linux" }
+	}
+
+	set s3 {
+		type typeof(vlan id)
+		elements = { 2, 3, 103 }
+	}
+
+	set s4 {
+		type integer,16
+		elements = { 2, 3, 103, 2003 }
+	}
+
+	chain c1 {
+		osf name @s1 accept
+		osf name @s2 accept
+	}
+
+	chain c2 {
+		vlan id @s3 accept
+		vlan id @s4 accept
+	}
+}
