@@ -440,10 +440,15 @@ static void set_print_key(const struct expr *expr, struct output_ctx *octx)
 {
 	const struct datatype *dtype = expr->dtype;
 
-	if (dtype->size)
-		nft_print(octx, " %s", dtype->name);
-	else
-		nft_print(octx, " %s,%d", dtype->name, expr->len);
+	if (dtype->size || dtype->type == TYPE_VERDICT)
+		nft_print(octx, "%s", dtype->name);
+	else if (expr->flags & EXPR_F_CONSTANT)
+		nft_print(octx, "%s,%d", dtype->name, expr->len);
+	else {
+		nft_print(octx, "typeof(");
+		expr_print(expr, octx);
+		nft_print(octx, ")");
+	}
 }
 
 static void set_print_declaration(const struct set *set,

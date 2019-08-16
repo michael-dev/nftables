@@ -787,6 +787,35 @@ err:
 	return NULL;
 }
 
+static void set_key_expression(struct netlink_ctx *ctx,
+				struct expr *expr, uint32_t set_flags,
+				struct nftnl_udata_buf *udbuf,
+				unsigned int type)
+{
+	struct output_ctx octx = {};
+	char buf[64];
+
+	if (expr->flags & EXPR_F_CONSTANT ||
+	    set_flags & NFT_SET_ANONYMOUS)
+		return;
+
+	buf[0] = 0;
+	/* Set definition uses typeof to define datatype. */
+	octx.output_fp = fmemopen(buf, sizeof(buf), "w");
+	if (octx.output_fp) {
+		char *end;
+
+		expr_print(expr, &octx);
+		fclose(octx.output_fp);
+		end = strchr(buf, '&');
+		if (end)
+			* end = 0;
+
+		if (!nftnl_udata_put(udbuf, type, strlen(buf) + 1, buf))
+			memory_allocation_error();
+	}
+}
+
 /*
  * Set
  */
@@ -856,6 +885,10 @@ int mnl_nft_set_add(struct netlink_ctx *ctx, const struct cmd *cmd,
 	    !nftnl_udata_put_u32(udbuf, NFTNL_UDATA_SET_MERGE_ELEMENTS,
 				 set->automerge))
 		memory_allocation_error();
+
+	set_key_expression(ctx, set->key, set->flags, udbuf, NFTNL_UDATA_SET_TYPEOF_KEY);
+	if (set->data)
+		set_key_expression(ctx, set->data, set->flags, udbuf, NFTNL_UDATA_SET_TYPEOF_DATA);
 
 	nftnl_set_set_data(nls, NFTNL_SET_USERDATA, nftnl_udata_buf_data(udbuf),
 			   nftnl_udata_buf_len(udbuf));
