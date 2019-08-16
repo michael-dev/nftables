@@ -192,6 +192,7 @@ int nft_lex(void *, void *, void *);
 %token DEFINE			"define"
 %token REDEFINE			"redefine"
 %token UNDEFINE			"undefine"
+%token TYPEOF			"typeof"
 
 %token FIB			"fib"
 
@@ -1843,6 +1844,10 @@ data_type_atom_expr	:	type_identifier
 				$$ = constant_expr_alloc(&@1, dtype, dtype->byteorder,
 							 $3, NULL);
 				xfree($1);
+			}
+			|	TYPEOF	'('	primary_expr	')'
+			{
+				$$ = $3;
 			}
 			;
 
