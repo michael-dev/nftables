@@ -90,6 +90,7 @@ enum datatypes {
 	TYPE_CT_EVENTBIT,
 	TYPE_IFNAME,
 	TYPE_IGMP_TYPE,
+	TYPE_VLANID,
 	__TYPE_MAX
 };
 #define TYPE_MAX		(__TYPE_MAX - 1)
@@ -264,6 +265,7 @@ extern const struct datatype time_type;
 extern const struct datatype boolean_type;
 extern const struct datatype priority_type;
 extern const struct datatype policy_type;
+extern const struct datatype vlanid_type;
 
 void inet_service_type_print(const struct expr *expr, struct output_ctx *octx);
 

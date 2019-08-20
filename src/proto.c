@@ -918,6 +918,15 @@ const struct proto_desc proto_arp = {
 
 #include <net/ethernet.h>
 
+const struct datatype vlanid_type = {
+	.type		= TYPE_VLANID,
+	.name		= "vlan_id",
+	.desc		= "802.1Q VLAN ID",
+	.byteorder	= BYTEORDER_BIG_ENDIAN,
+	.size		= 12,
+	.basetype	= &integer_type,
+};
+
 #define VLANHDR_BITFIELD(__name, __offset, __len) \
 	HDR_BITFIELD(__name, &integer_type, __offset, __len)
 #define VLANHDR_TYPE(__name, __type, __member) \
@@ -938,7 +947,7 @@ const struct proto_desc proto_vlan = {
 	.templates	= {
 		[VLANHDR_PCP]		= VLANHDR_BITFIELD("pcp", 0, 3),
 		[VLANHDR_CFI]		= VLANHDR_BITFIELD("cfi", 3, 1),
-		[VLANHDR_VID]		= VLANHDR_BITFIELD("id", 4, 12),
+		[VLANHDR_VID]		= HDR_BITFIELD("id", &vlanid_type, 4, 12),
 		[VLANHDR_TYPE]		= VLANHDR_TYPE("type", &ethertype_type, vlan_type),
 	},
 };

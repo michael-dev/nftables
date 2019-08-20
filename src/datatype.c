@@ -71,6 +71,7 @@ static const struct datatype *datatypes[TYPE_MAX + 1] = {
 	[TYPE_BOOLEAN]		= &boolean_type,
 	[TYPE_IFNAME]		= &ifname_type,
 	[TYPE_IGMP_TYPE]	= &igmp_type_type,
+	[TYPE_VLANID]		= &vlanid_type,
 };
 
 const struct datatype *datatype_lookup(enum datatypes type)
