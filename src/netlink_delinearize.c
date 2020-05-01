@@ -2216,6 +2216,7 @@ static void expr_postprocess(struct rule_pp_ctx *ctx, struct expr **exprp)
 		unsigned int type = expr->dtype->type, ntype = 0;
 		int off = expr->dtype->subtypes;
 		const struct datatype *dtype;
+		unsigned int numsizes = 0, *sizes = NULL;
 
 		list_for_each_entry(i, &expr->expressions, list) {
 			if (type) {
@@ -2225,8 +2226,14 @@ static void expr_postprocess(struct rule_pp_ctx *ctx, struct expr **exprp)
 			expr_postprocess(ctx, &i);
 
 			ntype = concat_subtype_add(ntype, i->dtype->type);
+			if (i->dtype->size == 0) {
+				numsizes++;
+				sizes = xrealloc(sizes, numsizes * sizeof(sizes[0]));
+				sizes[numsizes-1] = i->len;
+			}
 		}
-		datatype_set(expr, concat_type_alloc(ntype));
+		datatype_set(expr, concat_type_alloc(ntype, numsizes, sizes));
+		xfree(sizes);
 		break;
 	}
 	case EXPR_UNARY:

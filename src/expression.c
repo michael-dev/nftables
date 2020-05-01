@@ -909,7 +909,7 @@ static struct expr *concat_expr_parse_udata(const struct nftnl_udata *attr)
 	const struct datatype *dtype;
 	struct expr *concat_expr;
 	uint32_t dt = 0;
-	unsigned int i;
+	unsigned int i, numsizes = 0, *sizes = NULL;
 	int err;
 
 	err = nftnl_udata_parse(nftnl_udata_get(attr), nftnl_udata_len(attr),
@@ -949,19 +949,26 @@ static struct expr *concat_expr_parse_udata(const struct nftnl_udata *attr)
 
 		dt = concat_subtype_add(dt, expr->dtype->type);
 		compound_expr_add(concat_expr, expr);
+		if (expr->dtype->size == 0) {
+			numsizes++;
+			sizes = xrealloc(sizes, numsizes * sizeof(sizes[0]));
+			sizes[numsizes-1] = expr->len;
+		}
 	}
 
-	dtype = concat_type_alloc(dt);
+	dtype = concat_type_alloc(dt, numsizes, sizes);
 	if (!dtype)
 		goto err_free;
 
 	concat_expr->dtype = datatype_get(dtype);
 	concat_expr->len = dtype->size;
+	xfree(sizes);
 
 	return concat_expr;
 
 err_free:
 	expr_free(concat_expr);
+	xfree(sizes);
 	return NULL;
 }
 

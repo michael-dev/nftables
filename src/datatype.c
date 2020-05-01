@@ -1116,22 +1116,30 @@ void datatype_free(const struct datatype *ptr)
 
 	xfree(dtype->name);
 	xfree(dtype->desc);
+	xfree(dtype->subsizes);
 	xfree(dtype);
 }
 
-const struct datatype *concat_type_alloc(uint32_t type)
+/**
+ * @type: bitshifted TYPEID | TYPEID | ...
+ * @numsizes: size of sizes argument (number of entries)
+ * @sizes: for dtype with size==0, this gives the respective dynamic length
+ */
+const struct datatype *concat_type_alloc(uint32_t type, unsigned int numsizes,
+					 unsigned int *sizes)
 {
 	const struct datatype *i;
 	struct datatype *dtype;
 	char desc[256] = "concatenation of (";
 	char name[256] = "";
-	unsigned int size = 0, subtypes = 0, n;
+	unsigned int size = 0, subtypes = 0, n, k = 0, *subsizes;
 
 	n = div_round_up(fls(type), TYPE_BITS);
+	subsizes = xzalloc(n * sizeof(subsizes[0]));
 	while (n > 0 && concat_subtype_id(type, --n)) {
 		i = concat_subtype_lookup(type, n);
 		if (i == NULL)
-			return NULL;
+			goto err;
 
 		if (subtypes != 0) {
 			strncat(desc, ", ", sizeof(desc) - strlen(desc) - 1);
@@ -1140,7 +1148,19 @@ const struct datatype *concat_type_alloc(uint32_t type)
 		strncat(desc, i->desc, sizeof(desc) - strlen(desc) - 1);
 		strncat(name, i->name, sizeof(name) - strlen(name) - 1);
 
-		size += netlink_padded_len(i->size);
+		subsizes[n] = i->size;
+		if (subsizes[n] == 0 && k < numsizes) {
+			char ssize[20] = "";
+			subsizes[n] = sizes[k++];
+			snprintf(ssize, sizeof(ssize), "(%u)", subsizes[n]);
+			strncat(desc, ssize, sizeof(desc) - strlen(desc) - 1);
+			strncat(name, ssize, sizeof(name) - strlen(name) - 1);
+		}
+
+		if (subsizes[n] == 0)
+			goto err;
+
+		size += netlink_padded_len(subsizes[n]);
 		subtypes++;
 	}
 	strncat(desc, ")", sizeof(desc) - strlen(desc) - 1);
@@ -1149,11 +1169,15 @@ const struct datatype *concat_type_alloc(uint32_t type)
 	dtype->type	= type;
 	dtype->size	= size;
 	dtype->subtypes = subtypes;
+	dtype->subsizes = subsizes;
 	dtype->name	= xstrdup(name);
 	dtype->desc	= xstrdup(desc);
 	dtype->parse	= concat_type_parse;
 
 	return dtype;
+err:
+	xfree(subsizes);
+	return NULL;
 }
 
 const struct datatype *set_datatype_alloc(const struct datatype *orig_dtype,

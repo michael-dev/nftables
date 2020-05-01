@@ -1227,42 +1227,63 @@ static int expr_evaluate_concat(struct eval_ctx *ctx, struct expr **expr,
 	int off = dtype ? dtype->subtypes : 0;
 	unsigned int flags = EXPR_F_CONSTANT | EXPR_F_SINGLETON;
 	struct expr *i, *next;
+	unsigned int* sizes = NULL;
+	unsigned int numsizes = 0;
 
 	list_for_each_entry_safe(i, next, &(*expr)->expressions, list) {
 		unsigned dsize_bytes;
+		unsigned int subtype_size;
 
-		if (expr_is_constant(*expr) && dtype && off == 0)
+		if (expr_is_constant(*expr) && dtype && off == 0) {
+			xfree(sizes);
 			return expr_binary_error(ctx->msgs, i, *expr,
 						 "unexpected concat component, "
 						 "expecting %s",
 						 dtype->desc);
-
+		}
 		if (dtype == NULL)
 			tmp = datatype_lookup(TYPE_INVALID);
 		else
 			tmp = concat_subtype_lookup(type, --off);
-		expr_set_context(&ctx->ectx, tmp, tmp->size);
+		subtype_size = tmp->size;
+		if (subtype_size == 0 && dtype && dtype->subtypes > 0)
+			subtype_size = dtype->subsizes[off];
+		else if (subtype_size == 0)
+			subtype_size = i->len;
+		expr_set_context(&ctx->ectx, tmp, subtype_size);
 
-		if (eval && list_member_evaluate(ctx, &i) < 0)
+		if (eval && list_member_evaluate(ctx, &i) < 0) {
+			xfree(sizes);
 			return -1;
+		}
 		flags &= i->flags;
 
-		if (dtype == NULL && i->dtype->size == 0)
+		if (dtype == NULL && i->dtype->size == 0 && i->len == 0) {
+			xfree(sizes);
 			return expr_binary_error(ctx->msgs, i, *expr,
 						 "can not use variable sized "
 						 "data types (%s) in concat "
 						 "expressions",
 						 i->dtype->name);
+		}
 
 		ntype = concat_subtype_add(ntype, i->dtype->type);
 
-		dsize_bytes = div_round_up(i->dtype->size, BITS_PER_BYTE);
+		if (i->dtype->size == 0) {
+			numsizes++;
+			sizes = xrealloc(sizes, numsizes * sizeof(sizes[0]));
+			sizes[numsizes - 1] = i->len;
+			dsize_bytes = div_round_up(i->len, BITS_PER_BYTE);
+		} else {
+			dsize_bytes = div_round_up(i->dtype->size, BITS_PER_BYTE);
+		}
 		(*expr)->field_len[(*expr)->field_count++] = dsize_bytes;
 	}
 
 	(*expr)->flags |= flags;
-	datatype_set(*expr, concat_type_alloc(ntype));
+	datatype_set(*expr, concat_type_alloc(ntype, numsizes, sizes));
 	(*expr)->len   = (*expr)->dtype->size;
+	xfree(sizes); sizes = NULL;
 
 	if (off > 0)
 		return expr_error(ctx->msgs, *expr,
@@ -2918,7 +2939,7 @@ static int stmt_evaluate_nat_map(struct eval_ctx *ctx, struct stmt *stmt)
 	default:
 		return -1;
 	}
-	dtype = concat_type_alloc((addr_type << TYPE_BITS) | TYPE_INET_SERVICE);
+	dtype = concat_type_alloc((addr_type << TYPE_BITS) | TYPE_INET_SERVICE, 0, NULL);
 
 	expr_set_context(&ctx->ectx, dtype, dtype->size);
 	if (expr_evaluate(ctx, &stmt->nat.addr))
