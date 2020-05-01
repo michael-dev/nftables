@@ -27,6 +27,43 @@ EXPECTED="table inet t {
 	chain c2 {
 		ether type vlan vlan id @s2 accept
 	}
+}
+
+table bridge t {
+       set s3 {
+               typeof meta ibrpvid
+               elements = { 2, 3, 103 }
+       }
+
+       set s4 {
+               typeof vlan id . ip saddr
+               elements = { 3567 . 1.2.3.4 }
+       }
+
+       set s5 {
+               typeof meta ibrpvid . ip saddr
+               elements = { 3567 . 1.2.3.4 }
+       }
+
+       chain c3 {
+               meta ibrpvid @s3 accept
+       }
+
+       chain c4 {
+               ether type vlan vlan id . ip saddr @s4 accept
+       }
+
+       chain c4a {
+               meta ibrpvid . ip saddr @s4 accept
+       }
+
+       chain c5 {
+               meta ibrpvid . ip saddr @s5 accept
+       }
+
+       chain c5a {
+               ether type vlan vlan id . ip saddr @s5 accept
+       }
 }"
 
 set -e

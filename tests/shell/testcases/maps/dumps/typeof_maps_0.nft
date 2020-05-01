@@ -15,6 +15,16 @@ table inet t {
 			     2.3.4.5 . 6.7.8.9 : 0x00000002 }
 	}
 
+	map m4 {
+		typeof vlan id . arp daddr ip : ether daddr
+		elements = { 4095 . 1.2.3.4 : 01:02:03:04:05:06 }
+	}
+
+	map m5 {
+		typeof vlan id . arp daddr ip : vlan id
+		elements = { 4095 . 1.2.3.4 : 4094 }
+	}
+
 	chain c {
 		ct mark set osf name map @m1
 		meta mark set vlan id map @m2

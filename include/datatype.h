@@ -138,6 +138,7 @@ struct parse_ctx;
  * @flags:	flags
  * @size:	type size (fixed sized non-basetypes only)
  * @subtypes:	number of subtypes (concat type)
+ * @subsizes:	sizes of subtypes (concat type)
  * @name:	type name
  * @desc:	type description
  * @basetype:	basetype for subtypes, determines type compatibility
@@ -153,6 +154,7 @@ struct datatype {
 	unsigned int			flags;
 	unsigned int			size;
 	unsigned int			subtypes;
+	unsigned int			*subsizes;
 	const char			*name;
 	const char			*desc;
 	const struct datatype		*basetype;
@@ -273,7 +275,9 @@ extern const struct datatype policy_type;
 
 void inet_service_type_print(const struct expr *expr, struct output_ctx *octx);
 
-extern const struct datatype *concat_type_alloc(uint32_t type);
+extern const struct datatype *concat_type_alloc(uint32_t type,
+						unsigned int numsizes,
+						unsigned int *sizes);
 
 static inline uint32_t concat_subtype_add(uint32_t type, uint32_t subtype)
 {

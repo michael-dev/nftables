@@ -635,7 +635,10 @@ static const struct datatype *dtype_map_from_kernel(enum nft_data_types type)
 		return &verdict_type;
 	default:
 		if (type & ~TYPE_MASK)
-			return concat_type_alloc(type);
+			// This won't work for dynamically sized types,
+			// but in case of typeof dtype_map_from_kernel
+			// won't be called.
+			return concat_type_alloc(type, 0, NULL);
 		return datatype_lookup(type);
 	}
 }
@@ -778,7 +781,12 @@ struct set *netlink_delinearize_set(struct netlink_ctx *ctx,
 	}
 
 	key = nftnl_set_get_u32(nls, NFTNL_SET_KEY_TYPE);
-	keytype = dtype_map_from_kernel(key);
+	if (typeof_expr_key && typeof_expr_key->dtype->type == key)
+		keytype = typeof_expr_key->dtype;
+	else
+		/* Parsing CONCAT type would possibly require expr context
+		 * information (integer len) */
+		keytype = dtype_map_from_kernel(key);
 	if (keytype == NULL) {
 		netlink_io_error(ctx, NULL, "Unknown data type in set key %u",
 				 key);
@@ -790,7 +798,12 @@ struct set *netlink_delinearize_set(struct netlink_ctx *ctx,
 		uint32_t data;
 
 		data = nftnl_set_get_u32(nls, NFTNL_SET_DATA_TYPE);
-		datatype = dtype_map_from_kernel(data);
+		if (typeof_expr_data && typeof_expr_data->dtype->type == data)
+			datatype = typeof_expr_data->dtype;
+		else
+			/* Parsing CONCAT type would possibly require expr
+			 * context information (integer len) */
+			datatype = dtype_map_from_kernel(data);
 		if (datatype == NULL) {
 			netlink_io_error(ctx, NULL,
 					 "Unknown data type in set key %u",
@@ -1006,9 +1019,21 @@ static struct expr *netlink_parse_concat_elem(const struct datatype *dtype,
 
 	concat = concat_expr_alloc(&data->location);
 	while (off > 0) {
+		unsigned int dsize_bytes;
 		subtype = concat_subtype_lookup(dtype->type, --off);
 
-		expr		= constant_expr_splice(data, subtype->size);
+		if (subtype->size != 0)
+			assert(subtype->size == dtype->subsizes[off]);
+		/**
+		 * for vlan id 3567, data looks like [ 0d ef 00 00 ... ]
+		 * constant_expr_splice will mask it with ff f0 00 00 ..., so expr will contain 0d e0
+		 * which is not what we need. vlan id (without concat) also puts 0d ef into its reg,
+		 * so the leading zero should be preserved.
+		 * This is all due to vlan id having 12 bits which is not a multiple of BITS_PER_BYTE
+		 * and the way expr_evaluate_integer handle these.
+		 */
+		dsize_bytes     = div_round_up(dtype->subsizes[off], BITS_PER_BYTE);
+		expr		= constant_expr_splice(data, BITS_PER_BYTE * dsize_bytes);
 		expr->dtype     = subtype;
 		expr->byteorder = subtype->byteorder;
 
