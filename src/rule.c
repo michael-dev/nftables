@@ -2830,6 +2830,18 @@ static void payload_do_merge(struct stmt *sa[], unsigned int n)
 	}
 }
 
+static unsigned int payload_count_stmts(const struct rule *rule)
+{
+	struct stmt *stmt, *next;
+	unsigned int count = 0;
+
+	list_for_each_entry_safe(stmt, next, &rule->stmts, list) {
+		count++;
+	}
+
+	return count;
+}
+
 /**
  * payload_try_merge - try to merge consecutive payload match statements
  *
@@ -2843,7 +2855,7 @@ static void payload_do_merge(struct stmt *sa[], unsigned int n)
  */
 static void payload_try_merge(const struct rule *rule)
 {
-	struct stmt *sa[rule->num_stmts];
+	struct stmt *sa[payload_count_stmts(rule)];
 	struct stmt *stmt, *next;
 	unsigned int idx = 0;
 
