@@ -209,3 +209,18 @@ bridge test-bridge input
   [ cmp eq reg 1 0x00000001 ]
   [ immediate reg 0 accept ]
 
+# ether type vlan @ll,112,16 & 4095 . ip daddr { 1 . 1.0.0.1} accept
+__set%d test-bridge 3 size 1
+__set%d test-bridge 0
+	element 00000100 01000001  : 0 [end]
+bridge 
+  [ payload load 2b @ link header + 12 => reg 1 ]
+  [ cmp eq reg 1 0x00000081 ]
+  [ payload load 2b @ link header + 16 => reg 1 ]
+  [ cmp eq reg 1 0x00000008 ]
+  [ payload load 2b @ link header + 14 => reg 1 ]
+  [ bitwise reg 1 = (reg=1 & 0x0000ff0f ) ^ 0x00000000 ]
+  [ payload load 4b @ network header + 16 => reg 9 ]
+  [ lookup reg 1 set __set%d ]
+  [ immediate reg 0 accept ]
+

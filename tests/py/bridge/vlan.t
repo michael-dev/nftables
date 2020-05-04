@@ -34,6 +34,8 @@ vlan id { 1, 2, 4, 100, 4096 };fail
 
 ether type vlan ip protocol 1 accept;ok
 
+ether type vlan @ll,112,16 & 4095 . ip daddr { 1 . 1.0.0.1} accept;ok
+
 # illegal dependencies
 ether type ip vlan id 1;fail
 ether type ip vlan id 1 ip saddr 10.0.0.1;fail
