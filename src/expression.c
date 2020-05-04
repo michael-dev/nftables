@@ -368,6 +368,115 @@ static void constant_expr_destroy(struct expr *expr)
 	mpz_clear(expr->value);
 }
 
+#define NFTNL_UDATA_CONSTANT_DATATYPE 0
+#define NFTNL_UDATA_CONSTANT_BYTEORDER 1
+#define NFTNL_UDATA_CONSTANT_DATA 2
+#define NFTNL_UDATA_CONSTANT_LEN 3
+#define NFTNL_UDATA_CONSTANT_MAX 4
+
+static int constant_expr_build_udata(struct nftnl_udata_buf *udbuf,
+				 const struct expr *expr)
+{
+	unsigned int len = div_round_up(expr->len, BITS_PER_BYTE);
+	unsigned char data[len];
+
+	mpz_export_data(data, expr->value, expr->byteorder, len);
+
+	if (!nftnl_udata_put_u32(udbuf, NFTNL_UDATA_CONSTANT_DATATYPE, expr->dtype->type))
+		return -1;
+
+	if (!nftnl_udata_put_u32(udbuf, NFTNL_UDATA_CONSTANT_BYTEORDER, expr->byteorder))
+		return -1;
+
+	if (!nftnl_udata_put(udbuf, NFTNL_UDATA_CONSTANT_DATA, len, data))
+		return -1;
+
+	if (!nftnl_udata_put_u32(udbuf, NFTNL_UDATA_CONSTANT_LEN, expr->len))
+		return -1;
+
+	return 0;
+}
+
+static int constant_parse_udata(const struct nftnl_udata *attr, void *data)
+{
+	const struct nftnl_udata **ud = data;
+	uint8_t type = nftnl_udata_type(attr);
+	uint8_t len = nftnl_udata_len(attr);
+
+	switch (type) {
+	case NFTNL_UDATA_CONSTANT_DATATYPE:
+		if (len != sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_CONSTANT_BYTEORDER:
+		if (len != sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_CONSTANT_LEN:
+		if (len != sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_CONSTANT_DATA:
+		break;
+	default:
+		return 0;
+	}
+
+	ud[type] = attr;
+	return 0;
+}
+
+static const struct datatype *dtype_map_from_kernel(enum nft_data_types type)
+{
+	switch (type) {
+	case NFT_DATA_VERDICT:
+		return &verdict_type;
+	default:
+		if (type & ~TYPE_MASK)
+			// This won't work for dynamically sized types,
+			return concat_type_alloc(type, 0, NULL);
+		return datatype_lookup(type);
+	}
+}
+
+static struct expr *constant_expr_parse_udata(const struct nftnl_udata *attr)
+{
+	const struct nftnl_udata *ud[NFTNL_UDATA_CONSTANT_MAX + 1] = {};
+	uint32_t dt;
+	const struct datatype *dtype;
+	enum byteorder byteorder;
+	unsigned int len;
+	const void *data;
+	int err;
+
+	err = nftnl_udata_parse(nftnl_udata_get(attr), nftnl_udata_len(attr),
+				constant_parse_udata, ud);
+	if (err < 0)
+		return NULL;
+
+	if (!ud[NFTNL_UDATA_CONSTANT_DATATYPE])
+		return NULL;
+	if (!ud[NFTNL_UDATA_CONSTANT_BYTEORDER])
+		return NULL;
+	if (!ud[NFTNL_UDATA_CONSTANT_DATA])
+		return NULL;
+	if (!ud[NFTNL_UDATA_CONSTANT_LEN])
+		return NULL;
+
+	dt = nftnl_udata_get_u32(ud[NFTNL_UDATA_CONSTANT_DATATYPE]);
+	dtype = dtype_map_from_kernel(dt);
+	byteorder = nftnl_udata_get_u32(ud[NFTNL_UDATA_CONSTANT_BYTEORDER]);
+
+	len = nftnl_udata_get_u32(ud[NFTNL_UDATA_CONSTANT_LEN]);
+	if (nftnl_udata_len(ud[NFTNL_UDATA_CONSTANT_DATA]) != div_round_up(len, BITS_PER_BYTE))
+		return NULL;
+
+	data = nftnl_udata_get(ud[NFTNL_UDATA_CONSTANT_DATA]);
+
+	return constant_expr_alloc(&internal_location, dtype, byteorder, len,
+				   data);
+}
+
 static const struct expr_ops constant_expr_ops = {
 	.type		= EXPR_VALUE,
 	.name		= "value",
@@ -376,6 +485,8 @@ static const struct expr_ops constant_expr_ops = {
 	.cmp		= constant_expr_cmp,
 	.clone		= constant_expr_clone,
 	.destroy	= constant_expr_destroy,
+	.build_udata	= constant_expr_build_udata,
+	.parse_udata	= constant_expr_parse_udata,
 };
 
 struct expr *constant_expr_alloc(const struct location *loc,
