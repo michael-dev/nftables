@@ -649,6 +649,173 @@ static void binop_expr_destroy(struct expr *expr)
 	expr_free(expr->right);
 }
 
+#define NFTNL_UDATA_BINOP_OP 0
+#define NFTNL_UDATA_BINOP_LEFT 1
+#define NFTNL_UDATA_BINOP_RIGHT 2
+#define NFTNL_UDATA_BINOP_LEN 3
+#define NFTNL_UDATA_BINOP_MAX 4
+
+#define NFTNL_UDATA_BINOP_SUB_TYPE 0
+#define NFTNL_UDATA_BINOP_SUB_DATA 1
+#define NFTNL_UDATA_BINOP_SUB_MAX  2
+
+static int binop_expr_build_udata_side(struct nftnl_udata_buf *udbuf,
+				        const struct expr *expr, int key)
+{
+	struct nftnl_udata *nest, *nest_expr;
+	int err;
+
+	if (!expr_ops(expr)->build_udata)
+		return -1;
+
+	nest = nftnl_udata_nest_start(udbuf, key);
+	nftnl_udata_put_u32(udbuf, NFTNL_UDATA_BINOP_SUB_TYPE, expr->etype);
+	nest_expr = nftnl_udata_nest_start(udbuf, NFTNL_UDATA_BINOP_SUB_DATA);
+	err = expr_ops(expr)->build_udata(udbuf, expr);
+	if (err < 0)
+		return err;
+	nftnl_udata_nest_end(udbuf, nest_expr);
+	nftnl_udata_nest_end(udbuf, nest);
+
+	return 0;
+}
+
+static int binop_expr_build_udata(struct nftnl_udata_buf *udbuf,
+				 const struct expr *expr)
+{
+	int err;
+
+	err = binop_expr_build_udata_side(udbuf, expr->left, NFTNL_UDATA_BINOP_LEFT);
+	if (err < 0)
+		return err;
+
+	err = binop_expr_build_udata_side(udbuf, expr->right, NFTNL_UDATA_BINOP_RIGHT);
+	if (err < 0)
+		return err;
+
+	if (!nftnl_udata_put_u32(udbuf, NFTNL_UDATA_BINOP_OP, expr->op))
+		return -1;
+
+	if (!nftnl_udata_put_u32(udbuf, NFTNL_UDATA_BINOP_LEN, expr->len))
+		return -1;
+
+	return 0;
+}
+
+static int binop_parse_udata_nested(const struct nftnl_udata *attr, void *data)
+{
+	const struct nftnl_udata **ud = data;
+	uint8_t type = nftnl_udata_type(attr);
+	uint8_t len = nftnl_udata_len(attr);
+
+	switch (type) {
+	case NFTNL_UDATA_BINOP_SUB_TYPE:
+		if (len != sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_BINOP_SUB_DATA:
+		if (len <= sizeof(uint32_t))
+			return -1;
+		break;
+	default:
+		return 0;
+	}
+
+	ud[type] = attr;
+	return 0;
+}
+
+static struct expr *binop_parse_udata_side(const struct nftnl_udata *nested)
+{
+	const struct nftnl_udata *nest_ud[NFTNL_UDATA_BINOP_SUB_MAX];
+	const struct nftnl_udata  *subdata;
+	const struct expr_ops *ops;
+	struct expr *expr;
+	uint32_t etype;
+	int err;
+
+	err = nftnl_udata_parse(nftnl_udata_get(nested), nftnl_udata_len(nested),
+				binop_parse_udata_nested, nest_ud);
+	if (err < 0)
+		return NULL;
+
+	etype = nftnl_udata_get_u32(nest_ud[NFTNL_UDATA_BINOP_SUB_TYPE]);
+	ops = expr_ops_by_type(etype);
+	if (!ops || !ops->parse_udata)
+		return NULL;
+
+	subdata = nest_ud[NFTNL_UDATA_BINOP_SUB_DATA];
+	expr = ops->parse_udata(subdata);
+	if (!expr)
+		return NULL;
+
+	return expr;
+}
+
+static int binop_parse_udata(const struct nftnl_udata *attr, void *data)
+{
+	const struct nftnl_udata **ud = data;
+	uint8_t type = nftnl_udata_type(attr);
+	uint8_t len = nftnl_udata_len(attr);
+
+	switch (type) {
+	case NFTNL_UDATA_BINOP_OP:
+		if (len != sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_BINOP_LEFT:
+		if (len <= sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_BINOP_RIGHT:
+		if (len <= sizeof(uint32_t))
+			return -1;
+		break;
+	case NFTNL_UDATA_BINOP_LEN:
+		if (len != sizeof(uint32_t))
+			return -1;
+		break;
+	default:
+		return 0;
+	}
+
+	ud[type] = attr;
+	return 0;
+}
+
+static struct expr *binop_expr_parse_udata(const struct nftnl_udata *attr)
+{
+	const struct nftnl_udata *ud[NFTNL_UDATA_BINOP_MAX + 1] = {};
+	enum ops op;
+	struct expr *left, *right, *expr;
+	int err;
+	uint32_t len;
+
+	err = nftnl_udata_parse(nftnl_udata_get(attr), nftnl_udata_len(attr),
+				binop_parse_udata, ud);
+	if (err < 0)
+		return NULL;
+
+	if (!ud[NFTNL_UDATA_BINOP_OP])
+		return NULL;
+	if (!ud[NFTNL_UDATA_BINOP_LEFT])
+		return NULL;
+	if (!ud[NFTNL_UDATA_BINOP_RIGHT])
+		return NULL;
+	if (!ud[NFTNL_UDATA_BINOP_LEN])
+		return NULL;
+
+	op = nftnl_udata_get_u32(ud[NFTNL_UDATA_BINOP_OP]);
+	left = binop_parse_udata_side(ud[NFTNL_UDATA_BINOP_LEFT]);
+	right = binop_parse_udata_side(ud[NFTNL_UDATA_BINOP_RIGHT]);
+	len = nftnl_udata_get_u32(ud[NFTNL_UDATA_BINOP_LEN]);
+
+	expr = binop_expr_alloc(&internal_location, op, left, right);
+	expr->len = len;
+
+	return expr;
+}
+
 static const struct expr_ops binop_expr_ops = {
 	.type		= EXPR_BINOP,
 	.name		= "binop",
@@ -656,6 +823,8 @@ static const struct expr_ops binop_expr_ops = {
 	.json		= binop_expr_json,
 	.clone		= binop_expr_clone,
 	.destroy	= binop_expr_destroy,
+	.build_udata	= binop_expr_build_udata,
+	.parse_udata	= binop_expr_parse_udata,
 };
 
 struct expr *binop_expr_alloc(const struct location *loc, enum ops op,
