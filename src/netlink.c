@@ -405,6 +405,11 @@ void netlink_dump_expr(const struct nftnl_expr *nle,
 	if (!(debug_mask & NFT_DEBUG_NETLINK))
 		return;
 
+	if (!nle) {
+		fprintf(fp, "(unparseable expression)\n");
+		return;
+	}
+
 	nftnl_expr_fprintf(fp, nle, 0, 0);
 	fprintf(fp, "\n");
 }
