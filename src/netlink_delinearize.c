@@ -1959,29 +1959,11 @@ static void binop_adjust_one(const struct expr *binop, struct expr *value,
 static void __binop_adjust(const struct expr *binop, struct expr *right,
 			   unsigned int shift)
 {
-	struct expr *i;
-
 	switch (right->etype) {
 	case EXPR_VALUE:
 		binop_adjust_one(binop, right, shift);
 		break;
 	case EXPR_SET_REF:
-		list_for_each_entry(i, &right->set->init->expressions, list) {
-			switch (i->key->etype) {
-			case EXPR_VALUE:
-				binop_adjust_one(binop, i->key, shift);
-				break;
-			case EXPR_RANGE:
-				binop_adjust_one(binop, i->key->left, shift);
-				binop_adjust_one(binop, i->key->right, shift);
-				break;
-			case EXPR_SET_ELEM:
-				__binop_adjust(binop, i->key->key, shift);
-				break;
-			default:
-				BUG("unknown expression type %s\n", expr_name(i->key));
-			}
-		}
 		break;
 	case EXPR_RANGE:
 		binop_adjust_one(binop, right->left, shift);
