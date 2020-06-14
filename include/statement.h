@@ -190,6 +190,13 @@ struct fwd_stmt {
 struct stmt *fwd_stmt_alloc(const struct location *loc);
 uint32_t fwd_stmt_type(const char *type);
 
+struct unagg_stmt {
+	uint8_t			unused;
+};
+
+struct stmt *unagg_stmt_alloc(const struct location *loc);
+uint32_t unagg_stmt_type(const char *type);
+
 struct set_stmt {
 	struct expr		*set;
 	struct expr		*key;
@@ -287,6 +294,7 @@ extern struct stmt *xt_stmt_alloc(const struct location *loc);
  * @STMT_CONNLIMIT:	connection limit statement
  * @STMT_MAP:		map statement
  * @STMT_SYNPROXY:	synproxy statement
+ * @STMT_UNAGG:		unagg statement
  */
 enum stmt_types {
 	STMT_INVALID,
@@ -315,6 +323,7 @@ enum stmt_types {
 	STMT_CONNLIMIT,
 	STMT_MAP,
 	STMT_SYNPROXY,
+	STMT_UNAGG,
 };
 
 /**

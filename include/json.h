@@ -73,6 +73,7 @@ json_t *quota_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
 json_t *ct_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
 json_t *limit_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
 json_t *fwd_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
+json_t *unagg_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
 json_t *notrack_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
 json_t *dup_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
 json_t *meta_stmt_json(const struct stmt *stmt, struct output_ctx *octx);
@@ -170,6 +171,7 @@ STMT_PRINT_STUB(quota)
 STMT_PRINT_STUB(ct)
 STMT_PRINT_STUB(limit)
 STMT_PRINT_STUB(fwd)
+STMT_PRINT_STUB(unagg)
 STMT_PRINT_STUB(notrack)
 STMT_PRINT_STUB(dup)
 STMT_PRINT_STUB(meta)

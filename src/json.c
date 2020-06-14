@@ -1187,6 +1187,11 @@ json_t *fwd_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 	return json_pack("{s:o}", "fwd", root);
 }
 
+json_t *unagg_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
+{
+	return json_pack("{s:n}", "unagg");
+}
+
 json_t *notrack_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 {
 	return json_pack("{s:n}", "notrack");

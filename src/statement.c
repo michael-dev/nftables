@@ -834,6 +834,28 @@ struct stmt *fwd_stmt_alloc(const struct location *loc)
 	return stmt_alloc(loc, &fwd_stmt_ops);
 }
 
+static void unagg_stmt_print(const struct stmt *stmt, struct output_ctx *octx)
+{
+	nft_print(octx, "unagg");
+}
+
+static void unagg_stmt_destroy(struct stmt *stmt)
+{
+}
+
+static const struct stmt_ops unagg_stmt_ops = {
+	.type		= STMT_UNAGG,
+	.name		= "unagg",
+	.print		= unagg_stmt_print,
+	.json		= unagg_stmt_json,
+	.destroy	= unagg_stmt_destroy,
+};
+
+struct stmt *unagg_stmt_alloc(const struct location *loc)
+{
+	return stmt_alloc(loc, &unagg_stmt_ops);
+}
+
 static void tproxy_stmt_print(const struct stmt *stmt, struct output_ctx *octx)
 {
 	nft_print(octx, "tproxy");

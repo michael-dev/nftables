@@ -1428,6 +1428,18 @@ out_err:
 	xfree(stmt);
 }
 
+static void netlink_parse_unagg(struct netlink_parse_ctx *ctx,
+				const struct location *loc,
+				const struct nftnl_expr *nle)
+{
+	struct stmt *stmt;
+
+	stmt = unagg_stmt_alloc(loc);
+
+	ctx->stmt = stmt;
+	return;
+}
+
 static void netlink_parse_queue(struct netlink_parse_ctx *ctx,
 			      const struct location *loc,
 			      const struct nftnl_expr *nle)
@@ -1628,6 +1640,7 @@ static const struct {
 	{ .name = "queue",	.parse = netlink_parse_queue },
 	{ .name = "dynset",	.parse = netlink_parse_dynset },
 	{ .name = "fwd",	.parse = netlink_parse_fwd },
+	{ .name = "unagg",	.parse = netlink_parse_unagg },
 	{ .name = "target",	.parse = netlink_parse_target },
 	{ .name = "match",	.parse = netlink_parse_match },
 	{ .name = "objref",	.parse = netlink_parse_objref },
@@ -2746,6 +2759,7 @@ static void rule_parse_postprocess(struct netlink_parse_ctx *ctx, struct rule *r
 			expr_postprocess(&rctx, &stmt->objref.expr);
 			break;
 		default:
+			/* ign STMT_UNAGG, nothing to do */
 			break;
 		}
 

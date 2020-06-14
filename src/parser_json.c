@@ -1811,6 +1811,12 @@ out_err:
 	return NULL;
 }
 
+static struct stmt *json_parse_unagg_stmt(struct json_ctx *ctx,
+					const char *key, json_t *value)
+{
+	return unagg_stmt_alloc(int_loc);
+}
+
 static struct stmt *json_parse_notrack_stmt(struct json_ctx *ctx,
 					const char *key, json_t *value)
 {
@@ -2488,6 +2494,7 @@ static struct stmt *json_parse_stmt(struct json_ctx *ctx, json_t *root)
 		{ "quota", json_parse_quota_stmt },
 		{ "limit", json_parse_limit_stmt },
 		{ "fwd", json_parse_fwd_stmt },
+		{ "unagg", json_parse_unagg_stmt },
 		{ "notrack", json_parse_notrack_stmt },
 		{ "dup", json_parse_dup_stmt },
 		{ "snat", json_parse_nat_stmt },

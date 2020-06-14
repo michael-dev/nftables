@@ -1285,6 +1285,16 @@ static void netlink_gen_fwd_stmt(struct netlink_linearize_ctx *ctx,
 	nftnl_rule_add_expr(ctx->nlr, nle);
 }
 
+static void netlink_gen_unagg_stmt(struct netlink_linearize_ctx *ctx,
+				   const struct stmt *stmt)
+{
+	struct nftnl_expr *nle;
+
+	nle = alloc_nft_expr("unagg");
+
+	nftnl_rule_add_expr(ctx->nlr, nle);
+}
+
 static void netlink_gen_queue_stmt(struct netlink_linearize_ctx *ctx,
 				 const struct stmt *stmt)
 {
@@ -1480,6 +1490,8 @@ static void netlink_gen_stmt(struct netlink_linearize_ctx *ctx,
 		return netlink_gen_set_stmt(ctx, stmt);
 	case STMT_FWD:
 		return netlink_gen_fwd_stmt(ctx, stmt);
+	case STMT_UNAGG:
+		return netlink_gen_unagg_stmt(ctx, stmt);
 	case STMT_CONNLIMIT:
 	case STMT_COUNTER:
 	case STMT_LIMIT:

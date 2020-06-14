@@ -3192,6 +3192,12 @@ static int stmt_evaluate_fwd(struct eval_ctx *ctx, struct stmt *stmt)
 	return 0;
 }
 
+static int stmt_evaluate_unagg(struct eval_ctx *ctx, struct stmt *stmt)
+{
+	stmt->flags |= STMT_F_TERMINAL;
+	return 0;
+}
+
 static int stmt_evaluate_queue(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	if (stmt->queue.queue != NULL) {
@@ -3450,6 +3456,8 @@ int stmt_evaluate(struct eval_ctx *ctx, struct stmt *stmt)
 		return stmt_evaluate_dup(ctx, stmt);
 	case STMT_FWD:
 		return stmt_evaluate_fwd(ctx, stmt);
+	case STMT_UNAGG:
+		return stmt_evaluate_unagg(ctx, stmt);
 	case STMT_SET:
 		return stmt_evaluate_set(ctx, stmt);
 	case STMT_OBJREF:

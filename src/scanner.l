@@ -558,6 +558,7 @@ addrstring	({macaddr}|{ip4addr}|{ip6addr})
 
 "dup"			{ return DUP; }
 "fwd"			{ return FWD; }
+"unagg"			{ return UNAGG; }
 
 "fib"			{ return FIB; }
 

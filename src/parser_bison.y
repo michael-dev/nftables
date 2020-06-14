@@ -530,6 +530,7 @@ int nft_lex(void *, void *, void *);
 
 %token DUP			"dup"
 %token FWD			"fwd"
+%token UNAGG			"unagg"
 
 %token NUMGEN			"numgen"
 %token INC			"inc"
@@ -651,6 +652,8 @@ int nft_lex(void *, void *, void *);
 %destructor { stmt_free($$); }	dup_stmt
 %type <stmt>			fwd_stmt
 %destructor { stmt_free($$); }	fwd_stmt
+%type <stmt>			unagg_stmt
+%destructor { stmt_free($$); }	unagg_stmt
 %type <stmt>			set_stmt
 %destructor { stmt_free($$); }	set_stmt
 %type <val>			set_stmt_op
@@ -2516,6 +2519,7 @@ stmt			:	verdict_stmt
 			|	redir_stmt
 			|	dup_stmt
 			|	fwd_stmt
+			|	unagg_stmt
 			|	set_stmt
 			|	map_stmt
 			|	synproxy_stmt
@@ -3301,6 +3305,12 @@ fwd_stmt		:	FWD	TO	stmt_expr
 				$$->fwd.family = $2;
 				$$->fwd.addr = $4;
 				$$->fwd.dev = $6;
+			}
+			;
+
+unagg_stmt		:	UNAGG
+			{
+				$$ = unagg_stmt_alloc(&@$);
 			}
 			;
 
